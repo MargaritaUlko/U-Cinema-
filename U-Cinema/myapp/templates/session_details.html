@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ session.movie.title }} – {{ session.start_datetime|date:"d.m.Y H:i" }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+        .screen {
+            width: 100%;
+            height: 30px;
+            background-color: #ddd;
+            margin-bottom: 20px;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+        }
+        .row {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        .seat {
+            width: 30px;
+            height: 30px;
+            margin: 5px;
+            display: inline-block;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            cursor: pointer;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+        }
+        .seat.booked {
+            visibility: hidden; /* Прячем, но оставляем место */
+        }
+        .seat.selected {
+            background-color: #FFD700;
+        }
+        .seat.booked {
+            background-color: #FF6347; /* Цвет для забронированных мест */
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Сеанс: {{ session.movie.title }}</h2>
+    <p>Дата и время: {{ session.start_datetime|date:"d.m.Y H:i" }}</p>
+    <p>Зал: {{ hall.name }}</p>
+
+    <div class="screen">Экран</div>
+
+    <div class="seating">
+        {% for row, seats in hall.seating_plan.items %}
+            <div class="row">
+                <span>Ряд {{ row }}:</span>
+                {% for seat in seats %}
+                    <div class="seat {% if seat == 0 %}booked{% endif %}" data-row="{{ row }}" data-seat="{{ forloop.counter }}">
+                        {% if seat != 0 %}{{ forloop.counter }}{% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <button id="book-button">Забронировать</button>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        let selectedSeats = [];
+        
+        // Выбираем место
+        document.querySelectorAll(".seat").forEach(seat => {
+            if (!seat.classList.contains("booked")) {
+                seat.addEventListener("click", function() {
+                    this.classList.toggle("selected");
+                    const seatIdentifier = {
+                        row: this.getAttribute("data-row"),
+                        seat: this.getAttribute("data-seat")
+                    };
+                    if (this.classList.contains("selected")) {
+                        selectedSeats.push(seatIdentifier);
+                    } else {
+                        selectedSeats = selectedSeats.filter(s => !(s.row === seatIdentifier.row && s.seat === seatIdentifier.seat));
+                    }
+                });
+            }
+        });
+
+        // Кнопка бронирования
+        document.getElementById("book-button").addEventListener("click", function() {
+            if (selectedSeats.length > 0) {
+                fetch("{% url 'book_seat' session.id %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        seats: selectedSeats
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Места забронированы!");
+                        location.reload();
+                    } else {
+                        alert("Ошибка бронирования. Попробуйте еще раз.");
+                    }
+                })
+                .catch(error => {
+                    alert("Произошла ошибка. Попробуйте снова.");
+                });
+            } else {
+                alert("Пожалуйста, выберите места.");
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

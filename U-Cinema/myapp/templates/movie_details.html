@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ movie.title }}</title>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'styles.css' %}">
+  <!-- Подключаем FullCalendar CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/main.min.css" rel="stylesheet">
+  <style>
+    /* Основной стиль */
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    }
+    .movie-details {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    /* Изменяем стиль для постера, чтобы он был круглым */
+    .movie-details img {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .sessions {
+      margin-top: 30px;
+    }
+    .session-item {
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+    .session-item button {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 16px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .session-item button:hover {
+      background: #0056b3;
+    }
+    /* Сообщение */
+    #messageBox {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 15px;
+      background: #007bff;
+      color: white;
+      border-radius: 5px;
+      display: none;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="movie-details">
+    <img src="{{ movie.poster.url }}" alt="{{ movie.title }} Poster">
+    <div class="info">
+      <h2>{{ movie.title }}</h2>
+      <p>{{ movie.description }}</p>
+    </div>
+  </div>
+
+  <!-- Календарь с ограниченной шириной -->
+  <div id="calendar" style="max-width:600px; margin: 0 auto;"></div>
+
+  <!-- Список сеансов для выбранной даты -->
+  <div class="sessions">
+    <h3>Сеансы:</h3>
+    <ul id="sessions-list">
+      <!-- Здесь будут появляться сеансы для выбранной даты -->
+    </ul>
+  </div>
+</div>
+
+<div id="messageBox"></div>
+
+<!-- Подключаем FullCalendar JS -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/main.min.js"></script>
+<!-- Подключаем файл локалей FullCalendar -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/locales-all.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    // Собираем данные сеансов в JavaScript-переменную.
+    var eventsData = [
+        {% for session in sessions %}
+        {
+            "title": "{{ session.start_datetime|date:'H:i' }}",
+            "start": "{{ session.start_datetime|date:'Y-m-d\\TH:i:s' }}",
+            "end": "{{ session.end_datetime|date:'Y-m-d\\TH:i:s' }}",
+            "description": "Цена билета: {{ session.ticket_price }} руб.",
+            "id": "{{ session.id }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    // Инициализация календаря с русской локалью и уменьшенными размерами
+    var calendarEl = document.getElementById('calendar');
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      locale: 'ru',                // Русская локаль
+      displayEventTime: false,     // Отключаем автоматическое отображение времени
+      events: eventsData,
+      dateClick: function(info) {
+        displaySessions(info.dateStr);
+      }
+    });
+    calendar.render();
+
+    // Функция для отображения сеансов выбранной даты
+    function displaySessions(date) {
+      var sessionList = document.getElementById("sessions-list");
+      sessionList.innerHTML = '';
+
+      // Фильтруем события по дате (первые 10 символов: YYYY-MM-DD)
+      var sessionsOnDate = eventsData.filter(function(event) {
+        return event.start.substring(0,10) === date;
+      });
+
+      if (sessionsOnDate.length === 0) {
+        sessionList.innerHTML = '<p>Нет сеансов на эту дату.</p>';
+      } else {
+        var html = sessionsOnDate.map(function(session) {
+          return `<li class="session-item">
+                    <p><strong>Время начала:</strong> ${session.start}</p>
+                    <p><strong>${session.description}</strong></p>
+                    <button class="bookButton" data-session-id="${session.id}">Забронировать</button>
+                  </li>`;
+        }).join('');
+        sessionList.innerHTML = html;
+      }
+    }
+
+    // Обработчик клика по кнопке "Забронировать"
+    document.addEventListener("click", function(e) {
+      if (e.target && e.target.matches(".bookButton")) {
+        var sessionId = e.target.dataset.sessionId;
+        alert("Вы забронировали сеанс с ID: " + sessionId);
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

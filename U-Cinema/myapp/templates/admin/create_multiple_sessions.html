@@ -1,0 +1,61 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <h2>Создание нескольких сеансов</h2>
+  <form method="post" id="sessions-form">
+    {% csrf_token %}
+    {{ form.as_p }}
+    
+    <div id="sessions-container">
+      <div class="session">
+        <label for="start_date_1">Дата:</label>
+        <input type="date" name="start_date_1" class="start_date">
+        <label for="start_time_1">Время:</label>
+        <input type="time" name="start_time_1" class="start_time">
+      </div>
+    </div>
+
+    <button type="button" id="add-session">Добавить сеанс</button>
+
+    <input type="submit" value="Создать сеансы">
+  </form>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      let sessionCount = 1;
+
+      document.getElementById("add-session").addEventListener("click", function() {
+        sessionCount++;
+
+        const sessionContainer = document.createElement("div");
+        sessionContainer.classList.add("session");
+
+        sessionContainer.innerHTML = `
+          <label for="start_date_${sessionCount}">Дата:</label>
+          <input type="date" name="start_date_${sessionCount}" class="start_date">
+          <label for="start_time_${sessionCount}">Время:</label>
+          <input type="time" name="start_time_${sessionCount}" class="start_time">
+        `;
+
+        document.getElementById("sessions-container").appendChild(sessionContainer);
+      });
+
+      // Когда форма будет отправлена, собираем все данные сеансов
+      document.getElementById("sessions-form").addEventListener("submit", function() {
+        const sessionsData = [];
+        const dateInputs = document.querySelectorAll(".start_date");
+        const timeInputs = document.querySelectorAll(".start_time");
+
+        for (let i = 0; i < dateInputs.length; i++) {
+          const date = dateInputs[i].value;
+          const time = timeInputs[i].value;
+          if (date && time) {
+            sessionsData.push(`${date} ${time}`);
+          }
+        }
+
+        document.querySelector('input[name="sessions"]').value = sessionsData.join(";");
+      });
+    });
+  </script>
+{% endblock %}
